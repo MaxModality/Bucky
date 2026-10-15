@@ -7,18 +7,19 @@ final class SystemSettingsIndexer {
     ]
 
     private let fileManager: FileManager
-    private let sidebarURL: URL
+    private let sidebarResourcesDirectory: URL
     private let extensionRoots: [URL]
 
     init(
         fileManager: FileManager = .default,
-        sidebarURL: URL = URL(
-            fileURLWithPath: "/System/Applications/System Settings.app/Contents/Resources/Sidebar.plist"
+        sidebarResourcesDirectory: URL = URL(
+            fileURLWithPath: "/System/Applications/System Settings.app/Contents/Resources",
+            isDirectory: true
         ),
         extensionRoots: [URL] = SystemSettingsIndexer.defaultExtensionRoots
     ) {
         self.fileManager = fileManager
-        self.sidebarURL = sidebarURL
+        self.sidebarResourcesDirectory = sidebarResourcesDirectory
         self.extensionRoots = extensionRoots
     }
 
@@ -30,13 +31,20 @@ final class SystemSettingsIndexer {
         var items: [LaunchItem] = []
         var seenBundleIDs = Set<String>()
 
-        for bundleID in sidebarBundleIDs {
+        var pendingBundleIDs = sidebarBundleIDs
+        var nextIndex = 0
+        while nextIndex < pendingBundleIDs.count {
+            let bundleID = pendingBundleIDs[nextIndex]
+            nextIndex += 1
             guard seenBundleIDs.insert(bundleID).inserted,
                   let settingsExtension = extensionsByBundleID[bundleID],
                   let launchURL = URL(string: "x-apple.systempreferences:\(bundleID)") else {
                 continue
             }
 
+            // Hosted bundles are destination pages, never the user's login items
+            // or services. Resolve only installed extensions with explicit URL opt-in.
+            pendingBundleIDs.append(contentsOf: settingsExtension.hostedBundleIDs)
             items.append(LaunchItem(
                 title: settingsExtension.displayName,
                 subtitle: "System Settings",
@@ -51,13 +59,29 @@ final class SystemSettingsIndexer {
     }
 
     private func loadSidebarBundleIDs() -> [String] {
-        guard let propertyList = propertyList(at: sidebarURL) as? [[String: Any]] else {
+        guard let children = try? fileManager.contentsOfDirectory(
+            at: sidebarResourcesDirectory,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
             return []
         }
 
-        return propertyList.flatMap { section -> [String] in
-            section["content"] as? [String] ?? []
+        var bundleIDs: [String] = []
+        for url in children.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            guard url.lastPathComponent.hasPrefix("Sidebar"),
+                  url.pathExtension == "plist",
+                  (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true,
+                  let sections = propertyList(at: url) as? [[String: Any]] else {
+                continue
+            }
+            for section in sections {
+                for key in ["content", "ordered_content", "sortable_content"] {
+                    bundleIDs.append(contentsOf: section[key] as? [String] ?? [])
+                }
+            }
         }
+        return bundleIDs
     }
 
     private func loadSettingsExtensions() -> [String: SettingsExtension] {
@@ -90,6 +114,7 @@ final class SystemSettingsIndexer {
 
         guard let info = propertyList(at: infoURL) as? [String: Any],
               let bundleID = nonEmpty(info["CFBundleIdentifier"] as? String),
+              isValidBundleID(bundleID),
               allowsSystemPreferencesURL(info) else {
             return nil
         }
@@ -101,7 +126,21 @@ final class SystemSettingsIndexer {
             ?? nonEmpty(info["CFBundleName"] as? String)
             ?? url.deletingPathExtension().lastPathComponent
 
-        return SettingsExtension(bundleID: bundleID, displayName: displayName, url: url)
+        let extensionAttributes = info["EXAppExtensionAttributes"] as? [String: Any]
+        let settingsAttributes = extensionAttributes?["SettingsExtensionAttributes"] as? [String: Any]
+        let hostedBundleIDs = settingsAttributes?["hosted_bundles"] as? [String] ?? []
+
+        return SettingsExtension(
+            bundleID: bundleID,
+            displayName: displayName,
+            url: url,
+            hostedBundleIDs: hostedBundleIDs
+        )
+    }
+
+    private func isValidBundleID(_ value: String) -> Bool {
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-")
+        return value.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 
     private func allowsSystemPreferencesURL(_ info: [String: Any]) -> Bool {
@@ -128,4 +167,5 @@ private struct SettingsExtension {
     let bundleID: String
     let displayName: String
     let url: URL
+    let hostedBundleIDs: [String]
 }
