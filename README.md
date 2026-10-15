@@ -4,6 +4,8 @@ The no-frills/robust approach to macOS Launchers.
 
 ## Build
 
+Requires macOS 26 or later and an Xcode installation with the macOS 26 SDK and Swift tools compatible with `Package.swift` (Swift 5.9 or later). Select Xcode's developer tools before building; no third-party package installation is required.
+
 ```sh
 make bundle
 ```
@@ -63,6 +65,15 @@ Bucky now uses the SwiftUI-native Liquid Glass launcher with a glass window surf
 App indexing starts during launcher controller initialization and stays fresh through the source stream, settings changes, and explicit refresh paths. Opening the launcher only presents and focuses the existing window state; while the launcher is open, Command+R reindexes and refreshes the currently displayed results using the current search text. Command+Comma opens Settings.
 
 The menu bar item provides Open, Reindex, Settings, and Quit actions. Bucky scans `.app` bundles recursively under `/Applications`, `/System/Applications`, and `~/Applications`, and scans only direct child `.app` bundles under `/System/Library/CoreServices` so native utilities such as Finder stay launchable without walking nested support trees.
+
+System Settings discovery scans `Sidebar*.plist` resources, reads both legacy and
+current section keys, and follows installed extensions hosted by sidebar pages.
+Each result opens a settings destination, including Login Items; discovery does
+not read the apps or services configured on that page. Only installed extensions
+that explicitly allow System Settings URLs become results.
+The [missing Settings entries investigation](docs/investigations/system-settings-discovery.md)
+records the filename/schema compatibility break observed on macOS 27.0.1 and its
+repair. Sidebar and hosted-page metadata remain Apple implementation details.
 
 App indexing and mode handoff stay asynchronous. Apps and text Stones show a shared animated Skeleton surface with an accessible loading label while background work is still populating the first result set. Switching into Files first shows the same loading surface until the file browser model is activated, then the file browser publishes its own loading, empty, or loaded directory state.
 

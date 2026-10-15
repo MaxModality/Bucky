@@ -32,6 +32,8 @@
 !.agents/
 !.agents/**
 !docs/
+!docs/investigations/
+!docs/investigations/system-settings-discovery.md
 !docs/superpowers/
 !docs/superpowers/plans/
 !docs/superpowers/plans/2026-05-14-bucky-refinements-implementation-plan.md

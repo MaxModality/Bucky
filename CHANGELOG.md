@@ -2,6 +2,14 @@
 
 All notable changes to Bucky are documented here.
 
+## [3.1.7] - 2026-10-15
+
+### Fixed
+
+- System Settings discovery now scans `Sidebar*.plist` resources and supports legacy and current sidebar section keys.
+- Independently launchable settings pages hosted inside General, including Login Items, now appear as destinations without reading their configured apps or services.
+- Duplicate and cyclic hosted-page references are resolved once, and malformed sidebar files are skipped.
+
 ## [3.1.6] - 2026-09-01
 
 ### Added
