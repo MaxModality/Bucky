@@ -2,6 +2,12 @@
 
 All notable changes to Bucky are documented here.
 
+## [3.2.18] - 2026-10-15
+
+### Fixed
+
+- Integrate the System Settings discovery fix from 3.1.7: scan `Sidebar*.plist`, support current and legacy section keys, and include hosted destination pages such as Login Items without reading configured apps or services.
+
 ## [3.2.17] - 2026-10-06
 
 ### Improved
@@ -151,6 +157,14 @@ All notable changes to Bucky are documented here.
 
 - Added the green Countdowns Stone with named target datetimes, live remaining-time display, and add/edit/delete management.
 - Added atomic JSON persistence for countdowns and generic Stone provider actions plus live refresh metadata.
+
+## [3.1.7] - 2026-10-15
+
+### Fixed
+
+- System Settings discovery now scans `Sidebar*.plist` resources and supports legacy and current sidebar section keys.
+- Independently launchable settings pages hosted inside General, including Login Items, now appear as destinations without reading their configured apps or services.
+- Duplicate and cyclic hosted-page references are resolved once, and malformed sidebar files are skipped.
 
 ## [3.1.6] - 2026-09-01
 
