@@ -2,7 +2,19 @@
 
 All notable changes to Bucky are documented here.
 
-Entries 3.3.1 through 3.4.3 account for development iterations retrospectively; intermediate numbers were not stamped into every build.
+Development version accounting was corrected on 2026-11-11. Intermediate changes had incorrectly retained 3.3.1 or 3.4.0, and the first version correction stamped 3.4.1. The entries from 3.3.1 through 3.4.5 below now assign each development step its own version retrospectively; they do not imply published releases or historical builds for every number. Each subsequent implementation or correction step must increment the bundle version.
+
+## [3.4.5] - 2026-11-11
+
+### Corrected
+
+- Account for every implementation iteration and version correction separately, documenting the previously omitted bumps and updating the bundle version to match.
+
+## [3.4.4] - 2026-11-11
+
+### Corrected
+
+- Make the first explicit version correction after the Strange alignment. That correction originally stamped 3.4.1; this entry records its own place in the reconciled iteration sequence.
 
 ## [3.4.3] - 2026-11-11
 
