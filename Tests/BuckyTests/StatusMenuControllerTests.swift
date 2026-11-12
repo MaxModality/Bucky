@@ -33,6 +33,8 @@ final class StatusMenuControllerTests: XCTestCase {
         let settingsItem = menu.items[2]
         let separatorItem = menu.items[3]
         let quitItem = menu.items[4]
+        let versionSeparatorItem = menu.items[5]
+        let versionItem = menu.items[6]
 
         XCTAssertEqual(statusItem.length, NSStatusItem.squareLength)
         XCTAssertTrue(image.isTemplate)
@@ -47,7 +49,9 @@ final class StatusMenuControllerTests: XCTestCase {
             "Reindex Applications",
             "Settings...",
             "",
-            "Quit Bucky"
+            "Quit Bucky",
+            "",
+            "Bucky \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown version")"
         ])
 
         XCTAssertMenuItem(openItem, targets: controller, action: "open", keyEquivalent: "")
@@ -55,6 +59,8 @@ final class StatusMenuControllerTests: XCTestCase {
         XCTAssertMenuItem(settingsItem, targets: controller, action: "settings", keyEquivalent: ",")
         XCTAssertTrue(separatorItem.isSeparatorItem)
         XCTAssertMenuItem(quitItem, targets: controller, action: "quit", keyEquivalent: "q")
+        XCTAssertTrue(versionSeparatorItem.isSeparatorItem)
+        XCTAssertFalse(versionItem.isEnabled)
 
         menu.performActionForItem(at: 0)
         menu.performActionForItem(at: 1)

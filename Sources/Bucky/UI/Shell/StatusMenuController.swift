@@ -46,6 +46,12 @@ final class StatusMenuController: NSObject {
         quitItem.target = self
         menu.addItem(quitItem)
 
+        menu.addItem(.separator())
+
+        let versionItem = NSMenuItem(title: "Bucky \(Self.versionString)", action: nil, keyEquivalent: "")
+        versionItem.isEnabled = false
+        menu.addItem(versionItem)
+
         statusItem.menu = menu
         statusItem.isVisible = true
     }
@@ -59,6 +65,10 @@ final class StatusMenuController: NSObject {
     }
 
     private static let menuBarIconSize = NSSize(width: 16, height: 16)
+
+    private static var versionString: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown version"
+    }
 
     @objc private func open() {
         openAction()

@@ -2,6 +2,12 @@
 
 All notable changes to Bucky are documented here.
 
+## [3.4.0] - 2026-11-11
+
+### Added
+
+- Show the installed Bucky version at the bottom of the menu bar menu.
+
 ## [3.3.0] - 2026-10-16
 
 ### Added
