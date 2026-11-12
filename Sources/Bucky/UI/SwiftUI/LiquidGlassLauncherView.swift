@@ -13,6 +13,7 @@ struct LiquidGlassLauncherView: View {
     @State private var scrollTargetAnchor: UnitPoint?
     @State private var inlineCreationName = ""
     @State private var inlineCreationTargetDate = Date()
+    @State private var inlineCreationOptionID = "none"
     @State private var inlineCreationNameIsInvalid = false
     @FocusState private var inlineCreationFocus: InlineCreationField?
 
@@ -381,6 +382,29 @@ struct LiquidGlassLauncherView: View {
                         .focused($inlineCreationFocus, equals: .time)
                         .accessibilityLabel("Target time")
                     }
+
+                    if !configuration.options.isEmpty {
+                        Picker(configuration.optionLabel, selection: $inlineCreationOptionID) {
+                            ForEach(configuration.options) { option in
+                                Text(option.title).tag(option.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .controlSize(.small)
+                        .fixedSize()
+                        .accessibilityLabel(configuration.optionLabel)
+
+                        Text(configuration.options.first { $0.id == inlineCreationOptionID }?.help ?? "")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 28, alignment: .topLeading)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text("Alerts: next 60 occurrences across your countdowns. Bucky refills the queue while running.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -434,13 +458,15 @@ struct LiquidGlassLauncherView: View {
 
         let name = inlineCreationName
         let date = inlineCreationTargetDate
+        let optionID = inlineCreationOptionID
         let stoneID = model.mode.stoneID
         Task { @MainActor in
-            guard await model.submitInlineCreationAsync(name: name, targetDate: date),
+            guard await model.submitInlineCreationAsync(name: name, targetDate: date, optionID: optionID),
                   model.mode.stoneID == stoneID else { return }
             inlineCreationName = ""
             inlineCreationNameIsInvalid = false
             inlineCreationTargetDate = configuration.defaultTargetDate
+            inlineCreationOptionID = configuration.options.first?.id ?? "none"
             inlineCreationFocus = .name
         }
     }
@@ -455,6 +481,7 @@ struct LiquidGlassLauncherView: View {
         inlineCreationName = ""
         inlineCreationNameIsInvalid = false
         inlineCreationTargetDate = model.inlineCreationConfiguration?.defaultTargetDate ?? Date()
+        inlineCreationOptionID = model.inlineCreationConfiguration?.options.first?.id ?? "none"
         inlineCreationFocus = .name
     }
 
@@ -523,7 +550,7 @@ struct LiquidGlassLauncherView: View {
                             .lineLimit(1)
                         Group {
                             if let target = row.countdownTarget {
-                                LiveRemainingTimeText(target: target)
+                                LiveRemainingTimeText(target: target, recurrence: row.countdownRecurrence, timeZoneIdentifier: row.countdownTimeZoneIdentifier)
                             } else {
                                 Text(row.subtitle)
                             }
@@ -550,6 +577,30 @@ struct LiquidGlassLauncherView: View {
                     }
                     selectResult(row)
                     model.activate(row)
+                }
+
+                if !row.options.isEmpty {
+                    Menu {
+                        ForEach(Array(row.options.enumerated()), id: \.offset) { _, option in
+                            Button {
+                                model.performOption(option, for: row)
+                            } label: {
+                                if option.isSelected {
+                                    Label(option.title, systemImage: "checkmark")
+                                } else {
+                                    Text(option.title)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "repeat")
+                            .frame(width: 22, height: 22)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("Change repeat schedule")
+                    .accessibilityLabel("Repeat schedule for \(row.display)")
+                    .disabled(model.isPerformingProviderAction || model.isSubmittingInlineCreation)
                 }
 
                 if row.kind == .application {

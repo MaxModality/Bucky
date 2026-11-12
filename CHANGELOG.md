@@ -2,6 +2,19 @@
 
 All notable changes to Bucky are documented here.
 
+## [3.3.0] - 2026-10-16
+
+### Added
+
+- Add Never, Daily, Weekdays, Weekly, Monthly, and Yearly repeat choices to Countdown creation and saved-row menus.
+- Derive the next occurrence from the original date and saved time zone, skip missed occurrences and invalid month dates, and preserve existing one-time countdown files.
+- Queue the next 60 upcoming notification occurrences across countdowns, refilling on launch, edits, and hourly while running. Closed-app alerts stop when the queue is exhausted until Bucky runs again.
+
+### Improved
+
+- Keep recurring time updates local to visible row text and plan notifications off the UI executor.
+- Serialize notification updates with stale-generation checks and bounded backoff for transient scheduling failures.
+
 ## [3.2.18] - 2026-10-15
 
 ### Fixed

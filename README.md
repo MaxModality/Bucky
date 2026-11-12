@@ -78,7 +78,7 @@ Use `Cmd+1` for Apps, `Cmd+2` for Calculator, `Cmd+3` for Dictionary, `Cmd+4` fo
 
 Files mode shows mounted volumes alongside folders and files, and supports folders-first sorting when you want directories grouped ahead of other entries. Confirmed file mutations run on a serial background worker with a busy skeleton. Keep Both never replaces an existing destination; only explicit Replace permits replacement. Directory requests coalesce and previews cancel obsolete work. The Files watcher suspends when the Stone is inactive. Normal quit drains approved operations and queued preference saves; forcibly terminating the process cannot provide that guarantee.
 
-Countdowns mode stores named target datetimes in `~/Library/Application Support/Bucky/countdowns.json`. The top row accepts a countdown name plus native date and time fields; press Return from the title field or click the plus button to create it, and use a countdown's trash button to open the deletion prompt. Press Return or choose the red Confirm Deletion button; Escape cancels. Empty titles are refused with a red underline and accessible hint. Each countdown displays its remaining days, hours, minutes, seconds, and milliseconds. macOS schedules a native notification for each countdown, including while Bucky is closed; notification permission is requested when the first countdown is created. Only visible remaining-time text ticks, without fades, and expired countdowns freeze at zero. New entries are refused at 100 rather than removing existing entries; legacy files above that limit are preserved.
+Countdowns mode stores named target datetimes in `~/Library/Application Support/Bucky/countdowns.json`. The top row accepts a countdown name plus native date and time fields; press Return from the title field or click the plus button to create it, and use a countdown's trash button to open the deletion prompt. Press Return or choose the red Confirm Deletion button; Escape cancels. Empty titles are refused with a red underline and accessible hint. Each countdown displays its remaining days, hours, minutes, seconds, and milliseconds. macOS schedules a native notification for each countdown, including while Bucky is closed; notification permission is requested when the first countdown is created. Only visible remaining-time text ticks, without fades, and expired one-time countdowns freeze at zero. New entries are refused at 100 rather than removing existing entries; legacy files above that limit are preserved.
 
 Bucky uses SwiftUI Liquid Glass as a separate, noninteractive backdrop prepared with the retained hidden Apps shell. Opening shows the same glass surface immediately, without an opaque-to-transparent transition. Reduce Transparency uses a stable opaque surface. The backdrop never controls window opacity, input focus, or list geometry. The results scroll viewport has a constant 1% input surface to keep scrolling over gaps and padding inside Bucky; rectangular interaction shapes handle routing within the list. The native window backing stays clear. Cold icon misses and optional preloads also wait briefly, while cached icons are available immediately. Settings, Help, and heavier Stones retain their normal mount/unmount lifecycle. macOS 26 is required; the previous AppKit launcher has been removed.
 
@@ -98,6 +98,35 @@ records the filename/schema compatibility break observed on macOS 27.0.1 and its
 repair. Sidebar and hosted-page metadata remain Apple implementation details.
 
 App indexing and mode handoff stay asynchronous. Apps and text Stones show a shared animated Skeleton surface with an accessible loading label while background work is still populating the first result set. Switching into Files first shows the same loading surface until the file browser model is activated, then the file browser publishes its own loading, empty, or loaded directory state.
+
+## Recurring Countdowns
+
+Choose a future first date and time, then use **Repeat**: Never (the default), Daily,
+Weekdays, Weekly, Monthly, or Yearly. The repeat menu beside each saved countdown
+changes its schedule without deleting or duplicating it. Choosing Never keeps the
+currently upcoming occurrence as a one-time countdown. The trash button deletes
+the entire countdown after confirmation, including its scheduled alerts.
+
+Repeats use the Gregorian calendar and the time zone saved when the countdown is
+created. Missed occurrences are skipped, and reopening Bucky immediately shows
+the next occurrence. Weekdays skips Saturday and Sunday. Monthly repeats use the
+same day number and skip months without that day; yearly February 29 countdowns
+repeat only in leap years. A time missing during daylight saving moves forward
+to the next valid local time; a repeated local time uses its first occurrence.
+Travel does not silently change the saved schedule's time zone.
+
+Only the visible remaining-time text ticks. Recurrence is derived from the saved
+anchor instead of writing every rollover to disk. Legacy records without repeat
+fields remain one-time countdowns, and malformed recurrence or time-zone data is
+preserved with writes blocked until repaired.
+
+Bucky queues the **next 60 upcoming occurrences across all countdowns**, including
+one-time countdowns, and refills that queue on launch, schedule changes, and hourly
+while running. macOS can deliver those queued alerts while Bucky is closed, subject
+to notification permissions and system settings. Alerts stop when the queue runs
+out until Bucky runs again; the countdown display still advances correctly on
+reopening. Notification planning runs on a utility task, and serialized updates
+ignore stale generations and retry transient scheduling failures once after backoff.
 
 ## Stone Boundaries
 

@@ -619,8 +619,8 @@ final class LiquidGlassLauncherModel: ObservableObject {
         return true
     }
 
-    func submitInlineCreationAsync(name: String, targetDate: Date) async -> Bool {
-        guard providerConfirmation == nil, !isSubmittingInlineCreation,
+    func submitInlineCreationAsync(name: String, targetDate: Date, optionID: String? = nil) async -> Bool {
+        guard providerConfirmation == nil, !isSubmittingInlineCreation, !isPerformingProviderAction,
               let provider = stoneProviders.provider(for: mode.stoneID) as? any InlineCreationStoneProvider else {
             return false
         }
@@ -628,7 +628,7 @@ final class LiquidGlassLauncherModel: ObservableObject {
         isSubmittingInlineCreation = true
         interactionError = nil
         defer { isSubmittingInlineCreation = false }
-        let saved = await provider.submitInlineCreationAsync(name: name, targetDate: targetDate)
+        let saved = await provider.submitInlineCreationAsync(name: name, targetDate: targetDate, optionID: optionID)
         guard mode.stoneID == stoneID else { return false }
         guard saved else {
             interactionError = provider.inlineCreationError ?? "Choose a future target date and try again."
@@ -1215,8 +1215,13 @@ final class LiquidGlassLauncherModel: ObservableObject {
         }
     }
 
+    func performOption(_ option: StoneResultOption, for row: StoneResultRow) {
+        guard row.options.contains(option) else { return }
+        perform(option.activation, for: row)
+    }
+
     private func perform(_ activation: StoneActivation, for row: StoneResultRow) {
-        guard providerConfirmation == nil, !isPerformingProviderAction else { return }
+        guard providerConfirmation == nil, !isPerformingProviderAction, !isSubmittingInlineCreation else { return }
         if let provider = stoneProviders.provider(for: mode.stoneID), provider.performsActivationsAsynchronously {
             let stoneID = mode.stoneID
             isPerformingProviderAction = true

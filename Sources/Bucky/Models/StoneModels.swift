@@ -128,6 +128,12 @@ protocol HistoryStoneProvider: StoneProvider {
     func snapshot(for query: String, recordingHistory: Bool) -> StoneResultSnapshot
 }
 
+struct StoneInlineCreationOption: Equatable, Hashable, Identifiable {
+    let id: String
+    let title: String
+    let help: String
+}
+
 struct StoneInlineCreationConfiguration: Equatable, Hashable {
     // Deliberately a named-datetime creation contract, not a general form framework.
     let namePlaceholder: String
@@ -135,6 +141,8 @@ struct StoneInlineCreationConfiguration: Equatable, Hashable {
     let submitHelp: String
     let systemImage: String
     let defaultTargetDate: Date
+    var options: [StoneInlineCreationOption] = []
+    var optionLabel: String = "Repeat"
 }
 
 struct StoneProviderConfirmation: Equatable, Hashable {
@@ -163,9 +171,14 @@ protocol InlineCreationStoneProvider: StoneProvider {
 
     func submitInlineCreation(name: String, targetDate: Date) -> Bool
     func submitInlineCreationAsync(name: String, targetDate: Date) async -> Bool
+    func submitInlineCreationAsync(name: String, targetDate: Date, optionID: String?) async -> Bool
 }
 
 extension InlineCreationStoneProvider {
+    func submitInlineCreationAsync(name: String, targetDate: Date, optionID: String?) async -> Bool {
+        await submitInlineCreationAsync(name: name, targetDate: targetDate)
+    }
+
     var inlineCreationError: String? { nil }
 
     func submitInlineCreationAsync(name: String, targetDate: Date) async -> Bool {

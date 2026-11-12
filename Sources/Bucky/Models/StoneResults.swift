@@ -40,6 +40,12 @@ enum StoneResultSnapshot: Equatable {
     }
 }
 
+struct StoneResultOption: Equatable, Hashable {
+    let title: String
+    let activation: StoneActivation
+    let isSelected: Bool
+}
+
 struct StoneResultRow: Identifiable, Equatable, Hashable {
     struct AccessoryPresentation: Equatable, Hashable {
         let systemImage: String
@@ -104,6 +110,9 @@ struct StoneResultRow: Identifiable, Equatable, Hashable {
     let iconSystemImage: String?
     let accessoryText: String?
     let countdownTarget: Date?
+    let countdownRecurrence: CountdownRecurrence
+    let countdownTimeZoneIdentifier: String?
+    let options: [StoneResultOption]
 
     init(
         id: ID,
@@ -117,7 +126,10 @@ struct StoneResultRow: Identifiable, Equatable, Hashable {
         iconSystemImage: String? = nil,
         accessoryText: String? = nil,
         accessoryPresentation: AccessoryPresentation? = nil,
-        countdownTarget: Date? = nil
+        countdownTarget: Date? = nil,
+        countdownRecurrence: CountdownRecurrence = .none,
+        countdownTimeZoneIdentifier: String? = nil,
+        options: [StoneResultOption] = []
     ) {
         self.id = id
         self.display = display
@@ -131,6 +143,9 @@ struct StoneResultRow: Identifiable, Equatable, Hashable {
         self.iconSystemImage = iconSystemImage
         self.accessoryText = accessoryText
         self.countdownTarget = countdownTarget
+        self.countdownRecurrence = countdownRecurrence
+        self.countdownTimeZoneIdentifier = countdownTimeZoneIdentifier
+        self.options = options
     }
 
     var identityKey: String {
@@ -144,7 +159,10 @@ struct StoneResultRow: Identifiable, Equatable, Hashable {
             accessoryText ?? "",
             accessoryPresentation?.systemImage ?? "",
             accessoryPresentation?.help ?? "",
-            countdownTarget.map { String($0.timeIntervalSinceReferenceDate) } ?? ""
+            countdownTarget.map { String($0.timeIntervalSinceReferenceDate) } ?? "",
+            countdownRecurrence.rawValue,
+            countdownTimeZoneIdentifier ?? "",
+            options.map { "\($0.title):\($0.isSelected):\($0.activation)" }.joined(separator: ",")
         ].joined(separator: "\u{1E}")
     }
 

@@ -46,15 +46,19 @@ final class CountdownStore {
     }
 
     @discardableResult
-    func add(name: String, targetDate: Date) -> Countdown? {
+    func add(name: String, targetDate: Date, recurrence: CountdownRecurrence = .none,
+             timeZoneIdentifier: String = TimeZone.current.identifier) -> Countdown? {
         guard let name = validatedNameForAddition(name) else { return nil }
 
-        let countdown = Countdown(name: name, targetDate: targetDate)
+        guard validSchedule(targetDate: targetDate, timeZoneIdentifier: timeZoneIdentifier) else { return nil }
+        let countdown = Countdown(name: name, targetDate: targetDate, recurrence: recurrence,
+                                  timeZoneIdentifier: timeZoneIdentifier)
         return save([countdown] + countdowns) ? countdown : nil
     }
 
     @discardableResult
-    func update(id: UUID, name: String, targetDate: Date) -> Bool {
+    func update(id: UUID, name: String, targetDate: Date, recurrence: CountdownRecurrence? = nil,
+                timeZoneIdentifier: String? = nil) -> Bool {
         guard let name = Self.normalizedName(name),
               let index = countdowns.firstIndex(where: { $0.id == id }) else {
             return false
@@ -62,7 +66,11 @@ final class CountdownStore {
 
         var next = countdowns
         next[index].name = name
+        let zone = timeZoneIdentifier ?? next[index].timeZoneIdentifier
+        guard validSchedule(targetDate: targetDate, timeZoneIdentifier: zone) else { return false }
         next[index].targetDate = targetDate
+        next[index].timeZoneIdentifier = zone
+        if let recurrence { next[index].recurrence = recurrence }
         return save(next)
     }
 
@@ -96,10 +104,24 @@ final class CountdownStore {
     }
 
     @MainActor
-    func addAsync(name: String, targetDate: Date) async -> Countdown? {
+    func addAsync(name: String, targetDate: Date, recurrence: CountdownRecurrence = .none,
+                  timeZoneIdentifier: String = TimeZone.current.identifier) async -> Countdown? {
         guard let name = validatedNameForAddition(name) else { return nil }
-        let countdown = Countdown(name: name, targetDate: targetDate)
+        guard validSchedule(targetDate: targetDate, timeZoneIdentifier: timeZoneIdentifier) else { return nil }
+        let countdown = Countdown(name: name, targetDate: targetDate, recurrence: recurrence,
+                                  timeZoneIdentifier: timeZoneIdentifier)
         return await saveAsync([countdown] + countdowns) ? countdown : nil
+    }
+
+    @MainActor
+    func updateAsync(id: UUID, recurrence: CountdownRecurrence, now: Date = Date()) async -> Bool {
+        guard let index = countdowns.firstIndex(where: { $0.id == id }) else { return false }
+        var next = countdowns
+        if recurrence == .none, next[index].recurrence != .none {
+            next[index].targetDate = next[index].nextTargetDate(after: now) ?? next[index].targetDate
+        }
+        next[index].recurrence = recurrence
+        return await saveAsync(next)
     }
 
     @MainActor
@@ -139,6 +161,15 @@ final class CountdownStore {
         return name
     }
 
+    private func validSchedule(targetDate: Date, timeZoneIdentifier: String) -> Bool {
+        guard targetDate.timeIntervalSinceReferenceDate.isFinite,
+              TimeZone(identifier: timeZoneIdentifier) != nil else {
+            lastError = "Choose a valid countdown date and time zone."
+            return false
+        }
+        return true
+    }
+
     private static func normalizedName(_ value: String) -> String? {
         let name = value
             .split(whereSeparator: { $0.isWhitespace })
@@ -153,7 +184,9 @@ final class CountdownStore {
             guard let name = normalizedName(countdown.name), seenIDs.insert(countdown.id).inserted else {
                 return nil
             }
-            return Countdown(id: countdown.id, name: name, targetDate: countdown.targetDate)
+            var normalized = countdown
+            normalized.name = name
+            return normalized
         }
     }
 }

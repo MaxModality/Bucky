@@ -45,7 +45,10 @@ final class CountdownStone: InlineCreationStoneProvider {
             targetDateLabel: "Target date and time",
             submitHelp: "Add countdown",
             systemImage: "timer",
-            defaultTargetDate: now().addingTimeInterval(3_600)
+            defaultTargetDate: now().addingTimeInterval(3_600),
+            options: CountdownRecurrence.allCases.map {
+                StoneInlineCreationOption(id: $0.rawValue, title: $0.title, help: Self.help(for: $0))
+            }
         )
     }
 
@@ -74,13 +77,31 @@ final class CountdownStone: InlineCreationStoneProvider {
     var inlineCreationError: String? { store.lastError }
 
     func submitInlineCreationAsync(name: String, targetDate: Date) async -> Bool {
-        guard targetDate > now() else { return false }
-        guard await store.addAsync(name: name, targetDate: targetDate) != nil else { return false }
+        await submitInlineCreationAsync(name: name, targetDate: targetDate, optionID: nil)
+    }
+
+    func submitInlineCreationAsync(name: String, targetDate: Date, optionID: String?) async -> Bool {
+        guard targetDate > now(),
+              let recurrence = CountdownRecurrence(rawValue: optionID ?? CountdownRecurrence.none.rawValue),
+              await store.addAsync(name: name, targetDate: targetDate, recurrence: recurrence) != nil else {
+            return false
+        }
         countdownsDidChange(store.countdowns)
         return true
     }
 
     func performAsync(_ activation: StoneActivation, for row: StoneResultRow) async -> StoneProviderActivationResult {
+        if case let .providerAction(action) = activation, action.hasPrefix("repeat:") {
+            let parts = action.split(separator: ":")
+            guard parts.count == 3, let id = UUID(uuidString: String(parts[1])),
+                  row.id == .tool(kind: .message, key: "countdown:\(id.uuidString)"),
+                  let recurrence = CountdownRecurrence(rawValue: String(parts[2])) else { return .unhandled }
+            guard await store.updateAsync(id: id, recurrence: recurrence, now: now()) else {
+                return .failed(message: store.lastError ?? "Could not change the repeat schedule.")
+            }
+            countdownsDidChange(store.countdowns)
+            return .handled(shouldRefresh: true, resetSelection: false, shouldHide: false)
+        }
         if case let .providerAction(action) = activation,
            let id = id(from: action, prefix: "delete-confirm:") {
             guard await store.removeAsync(id: id) else {
@@ -120,19 +141,39 @@ final class CountdownStone: InlineCreationStoneProvider {
             StoneResultRow(
                 id: .tool(kind: .message, key: "countdown:\(countdown.id.uuidString)"),
                 display: countdown.name,
-                subtitle: CountdownRemaining(until: countdown.targetDate, now: now).displayString,
+                subtitle: CountdownRemaining(until: countdown.nextTargetDate(after: now) ?? countdown.targetDate, now: now).displayString,
                 copyText: nil,
                 kind: .message,
                 primaryActivation: .none,
                 accessoryActivation: .providerAction("delete:\(countdown.id.uuidString)"),
-                iconSystemImage: "timer",
-                accessoryText: "Target \(targetDateFormatter.string(from: countdown.targetDate))",
+                iconSystemImage: countdown.recurrence == .none ? "timer" : "repeat",
+                accessoryText: countdown.recurrence == .none
+                    ? "Target \(targetDateFormatter.string(from: countdown.targetDate))"
+                    : "\(countdown.recurrence.title) · \(countdown.timeZoneIdentifier.split(separator: "/").last.map(String.init)?.replacingOccurrences(of: "_", with: " ") ?? countdown.timeZoneIdentifier)",
                 accessoryPresentation: .init(systemImage: "trash", help: "Delete countdown"),
-                countdownTarget: countdown.targetDate
+                countdownTarget: countdown.targetDate,
+                countdownRecurrence: countdown.recurrence,
+                countdownTimeZoneIdentifier: countdown.timeZoneIdentifier,
+                options: CountdownRecurrence.allCases.map {
+                    StoneResultOption(title: $0.title,
+                                      activation: .providerAction("repeat:\(countdown.id.uuidString):\($0.rawValue)"),
+                                      isSelected: $0 == countdown.recurrence)
+                }
             )
         }
 
         return countdownRows
+    }
+
+    private static func help(for recurrence: CountdownRecurrence) -> String {
+        switch recurrence {
+        case .none: return "One-time countdown. Choose a future date and time."
+        case .daily: return "Every day at this local time. Upcoming alerts are queued while Bucky is running."
+        case .weekdays: return "Monday–Friday at this local time; weekend dates move to Monday."
+        case .weekly: return "Every week on the selected weekday, at this local time."
+        case .monthly: return "Same day each month; months without that day are skipped."
+        case .yearly: return "Same date each year; February 29 repeats only in leap years."
+        }
     }
 
     private func id(from action: String, prefix: String) -> UUID? {
