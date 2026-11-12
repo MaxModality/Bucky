@@ -151,7 +151,7 @@ Settings are stored as JSON at:
 ~/Library/Application Support/Bucky/settings.json
 ```
 
-Settings currently include the global hotkey, launch-on-startup preference, and animation timing preference.
+Settings include the global hotkey, launch-on-startup control, and animation timing preference. Launch on startup reads the current macOS login-item status instead of a saved JSON preference. If approval is required, the control opens Login Items in System Settings; returning to Bucky refreshes its status. A missing login-item record is shown as off and can still be registered.
 
 Calculation history is stored as JSON at:
 

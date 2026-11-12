@@ -2,11 +2,45 @@
 
 All notable changes to Bucky are documented here.
 
+Entries 3.3.1 through 3.4.3 account for development iterations retrospectively; intermediate numbers were not stamped into every build.
+
+## [3.4.3] - 2026-11-11
+
+### Fixed
+
+- Align launch-on-startup with Strange: allow registration when no login-item record exists, open Login Items for approval, show approval as a separate state, and refresh after returning from System Settings.
+- Add three focused service regression tests and verify the controller in Swift 6 language mode.
+
+## [3.4.2] - 2026-11-11
+
+### Fixed
+
+- Treat a missing login item as already off when reading its status or disabling startup, removing the erroneous missing-item alert for the off action.
+
+## [3.4.1] - 2026-11-11
+
+### Fixed
+
+- Read launch-on-startup state from macOS instead of saved JSON and remove the settings-file write that blocked the toggle before Service Management ran.
+
 ## [3.4.0] - 2026-11-11
 
 ### Added
 
 - Show the installed Bucky version at the bottom of the menu bar menu.
+
+## [3.3.2] - 2026-11-11
+
+### Fixed
+
+- Handle unknown future Service Management status values so the startup controller's switch is exhaustive in Swift 6.
+
+## [3.3.1] - 2026-11-11
+
+### Fixed
+
+- Skip duplicate registration and unregistration based on macOS status, allowing a stale startup preference to be cleared after the login item was removed.
+- Place the changes in the Countdown worktree and remove the accidental edits from master.
 
 ## [3.3.0] - 2026-10-16
 

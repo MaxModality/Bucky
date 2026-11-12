@@ -4,7 +4,11 @@ import SwiftUI
 @MainActor
 final class SettingsViewModel: ObservableObject {
     @Published var hotKeyTitle = ""
-    @Published var launchAtStartup = false
+    @Published private(set) var launchAtStartupState = LaunchAtStartupController.State.disabled
+
+    var launchAtStartup: Bool { launchAtStartupState == .enabled }
+    var launchAtStartupRequiresApproval: Bool { launchAtStartupState == .requiresApproval }
+    var launchAtStartupAvailable: Bool { launchAtStartupState != .unavailable }
     @Published var animationTiming: LauncherAnimationTiming = .defaultValue
     @Published var fileBrowserStartDirectoryText = ""
     @Published var inclusionPaths: [String] = []
@@ -76,7 +80,7 @@ final class SettingsViewModel: ObservableObject {
 
     private func publishStoreSnapshot() {
         hotKeyTitle = settingsStore.settings.hotKey.displayName
-        launchAtStartup = settingsStore.settings.launchAtStartup
+        refreshLaunchAtStartup()
         animationTiming = settingsStore.settings.animationTiming
         fileBrowserStartDirectoryText = settingsStore.settings.fileBrowserStartDirectory?.path ?? "~/"
         customActions = settingsStore.settings.customActions
@@ -109,19 +113,17 @@ final class SettingsViewModel: ObservableObject {
         isRecordingHotKey = false
     }
 
+    func refreshLaunchAtStartup() {
+        launchAtStartupState = LaunchAtStartupController.state
+    }
+
     func setLaunchAtStartup(_ enabled: Bool) {
-        let previous = settingsStore.settings.launchAtStartup
-        guard settingsStore.updateLaunchAtStartup(enabled) else {
-            errorMessage = settingsStore.lastError
-            return
-        }
+        defer { refreshLaunchAtStartup() }
         do {
             try LaunchAtStartupController.setEnabled(enabled)
-            launchAtStartup = enabled
+            errorMessage = nil
         } catch {
-            _ = settingsStore.updateLaunchAtStartup(previous)
-            launchAtStartup = settingsStore.settings.launchAtStartup
-            errorMessage = "Could not update launch at startup."
+            errorMessage = "Could not update launch at startup: \(error.localizedDescription)"
         }
     }
 
@@ -263,13 +265,7 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func setLaunchAtStartupAsync(_ enabled: Bool) async {
-        let previous = settingsStore.settings.launchAtStartup
-        guard await performSave({
-            guard await settingsStore.updateLaunchAtStartupAsync(enabled) else { return false }
-            do { try LaunchAtStartupController.setEnabled(enabled); return true }
-            catch { _ = await settingsStore.updateLaunchAtStartupAsync(previous); return false }
-        }) else { return }
-        launchAtStartup = enabled
+        setLaunchAtStartup(enabled)
     }
 
     func setAnimationTimingAsync(_ timing: LauncherAnimationTiming) async {
@@ -366,6 +362,9 @@ struct SettingsView: View {
         .contentShape(Rectangle())
         .animation(.snappy(duration: 0.18), value: isSidebarCollapsed)
         .animation(settingsPaneSwitchAnimation, value: selectedPane)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refreshLaunchAtStartup()
+        }
         .alert(
             "Bucky Settings",
             isPresented: Binding(
@@ -749,13 +748,27 @@ private extension SettingsView {
         VStack(alignment: .leading, spacing: 18) {
             hotKeyRow
 
-            Toggle(
-                "Launch on startup",
-                isOn: Binding(
-                    get: { model.launchAtStartup },
-                    set: { value in Task { await model.setLaunchAtStartupAsync(value) } }
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle(
+                    "Launch on startup",
+                    isOn: Binding(
+                        get: { model.launchAtStartup },
+                        set: { value in Task { await model.setLaunchAtStartupAsync(value) } }
+                    )
                 )
-            )
+                .disabled(!model.launchAtStartupAvailable)
+
+                if model.launchAtStartupRequiresApproval {
+                    Button("Approval required — Open Login Items…") {
+                        model.setLaunchAtStartup(true)
+                    }
+                    .font(.callout)
+                } else if !model.launchAtStartupAvailable {
+                    Text("Launch on startup is unavailable.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             animationTimingRow
         }
